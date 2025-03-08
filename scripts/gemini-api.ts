@@ -1,13 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import dotenv from 'dotenv'
 import { Task } from './models';
 
-// Charge les variables d’environnement depuis le fichier .env
-dotenv.config();
-
-const apiKey = process.env.GEMINI_API_KEY;
+// Récupère la clé API depuis les variables d’environnement de Vite
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string;
 if (!apiKey) {
-  throw new Error('GEMINI_API_KEY n’est pas défini dans le fichier .env');
+  throw new Error('VITE_GEMINI_API_KEY n’est pas défini dans .env.local');
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);

@@ -1,12 +1,15 @@
 {
   "compilerOptions": {
     "target": "ES6",
-    "module": "NodeNext",          // Changé de "ESNext" à "NodeNext"
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "strict": true,
     "esModuleInterop": true,
     "outDir": "./dist",
-    "rootDir": "./scripts"
+    "rootDir": "./scripts",
+    "allowJs": true,
+    "lib": ["ESNext", "DOM"],
+    "types": ["vite/client"]
   },
   "include": ["scripts/**/*"]
 }

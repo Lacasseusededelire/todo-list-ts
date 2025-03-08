@@ -23,6 +23,19 @@ export default class Database {
         });
     }
 
+    async addTask(task: Task): Promise<number> {
+        return new Promise((resolve, reject) => {
+          if (!this.db) throw new Error('Database not initialized');
+          
+          const transaction = this.db.transaction(['tasks'], 'readwrite');
+          const store = transaction.objectStore('tasks');
+          const request = store.put(task);
+    
+          request.onsuccess = () => resolve(request.result as number);
+          request.onerror = () => reject(request.error);
+        });
+      }
+
     async deleteTask(id: number): Promise<boolean> {
         return new Promise((resolve, reject) =>{
             if (!this.db) throw new Error('La base de donné n est pas initialisé');
