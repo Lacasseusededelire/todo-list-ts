@@ -6,10 +6,10 @@
     "strict": true,
     "esModuleInterop": true,
     "outDir": "./dist",
-    "rootDir": "./scripts",
+    "rootDir": "src",
     "allowJs": true,
     "lib": ["ESNext", "DOM"],
     "types": ["vite/client"]
   },
-  "include": ["scripts/**/*"]
+  "include": ["src/**/*"]
 }

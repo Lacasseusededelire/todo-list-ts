@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { Task } from './models';
+import { Task } from '../models/models';
 
-// Récupère la clé API depuis les variables d’environnement de Vite
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string;
 if (!apiKey) {
   throw new Error('VITE_GEMINI_API_KEY n’est pas défini dans .env.local');
