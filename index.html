@@ -1,0 +1,72 @@
+<!-- index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do List App</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>To-Do List</h1>
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Search tasks or projects...">
+        <button onclick="searchTasksProjects()">Search</button>
+        <button onclick="resetSearch()">Reset Search</button>
+      </div>
+      <div class="filters">
+        <label for="status-filter">Filter by Status:</label>
+        <select id="status-filter" onchange="filterTasks()">
+          <option value="">All</option>
+          <option value="new">New</option>
+          <option value="in-progress">In Progress</option>
+          <option value="completed">Completed</option>
+        </select>
+        <label for="project-filter">Filter by Project:</label>
+        <select id="project-filter" onchange="filterTasks()">
+          <option value="">All Projects</option>
+          <!-- Options will be populated dynamically -->
+        </select>
+        <button onclick="generatePlanning()">Generate Planning</button>
+      </div>
+    </header>
+    <main>
+      <section class="task-form">
+        <h2>Add a New Task</h2>
+        <form id="task-form">
+          <input type="text" id="task-input" placeholder="Task description" required>
+          <input type="date" id="planned-end-date" required>
+          <input type="time" id="planned-end-time" required>
+          <select id="project-select">
+            <option value="">No Project</option>
+            <!-- Options will be populated dynamically -->
+          </select>
+          <button type="submit">Add Task</button>
+        </form>
+      </section>
+      <section class="task-list">
+        <h2>Tasks</h2>
+        <ul id="todo-list"></ul>
+      </section>
+      <section class="project-form">
+        <h2>Add a New Project</h2>
+        <form id="project-form">
+          <input type="text" id="project-input" placeholder="Project name" required>
+          <button type="submit">Add Project</button>
+        </form>
+      </section>
+      <section class="project-list">
+        <h2>Projects</h2>
+        <ul id="project-list"></ul>
+      </section>
+    </main>
+    <footer>
+      <p>&copy; 2023 To-Do List App. All rights reserved.</p>
+    </footer>
+  </div>
+  <script type="module" src="./dist/main.js"></script>
+</body>
+</html>
