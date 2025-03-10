@@ -1,4 +1,9 @@
 declare global {
+    /**
+     *
+     *
+     * @interface Window
+     */
     interface Window {
       startTask: (taskId: number) => Promise<void>;
       completeTask: (taskId: number) => Promise<void>;

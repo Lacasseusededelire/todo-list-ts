@@ -11,15 +11,26 @@ import { jsPDF } from 'jspdf';
 import TaskController from './controllers/controller';
 import { Status } from './models/models';
 const controller = new TaskController();
+/**
+ *
+ *
+ * @return {*}  {Promise<void>}
+ */
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         yield controller.initialize();
         yield loadProjects();
         setupTaskForm();
         setupProjectForm();
+        setupFilters();
         yield loadTasks();
     });
 }
+/**
+ *
+ *
+ * @return {*}  {Promise<void>}
+ */
 function loadProjects() {
     return __awaiter(this, void 0, void 0, function* () {
         const projects = yield controller.getAllProjects();
@@ -40,15 +51,16 @@ function loadProjects() {
                 const option = document.createElement('option');
                 option.value = project.id;
                 option.textContent = project.name;
-                projectSelect.appendChild(option);
-                const filterOption = document.createElement('option');
-                filterOption.value = project.id;
-                filterOption.textContent = project.name;
-                projectFilter.appendChild(filterOption);
+                projectSelect.appendChild(option.cloneNode(true));
+                projectFilter.appendChild(option);
             });
         }
     });
 }
+/**
+ *
+ *
+ */
 function setupTaskForm() {
     const taskForm = document.getElementById('task-form');
     if (taskForm) {
@@ -68,6 +80,10 @@ function setupTaskForm() {
         });
     }
 }
+/**
+ *
+ *
+ */
 function setupProjectForm() {
     const projectForm = document.getElementById('project-form');
     if (projectForm) {
@@ -75,8 +91,7 @@ function setupProjectForm() {
             event.preventDefault();
             const name = document.getElementById('project-input').value.trim().toLowerCase();
             const projects = yield controller.getAllProjects();
-            const existingProject = projects.find(project => project.name.trim().toLowerCase() === name);
-            if (existingProject) {
+            if (projects.some(project => project.name.trim().toLowerCase() === name)) {
                 alert('A project with this name already exists.');
                 return;
             }
@@ -86,22 +101,34 @@ function setupProjectForm() {
         });
     }
 }
+/**
+ *
+ *
+ * @return {*}  {Promise<void>}
+ */
 function loadTasks() {
     return __awaiter(this, void 0, void 0, function* () {
-        const statusFilter = document.getElementById('status-filter').value;
-        const projectFilter = document.getElementById('project-filter').value;
+        const statusFilterValue = document.getElementById('status-filter').value;
+        const statusFilter = statusFilterValue && Object.values(Status).includes(statusFilterValue)
+            ? statusFilterValue
+            : undefined;
+        const projectFilter = document.getElementById('project-filter').value || undefined;
+        console.log('Status Filter Value:', statusFilterValue); // Log pour vérifier
+        console.log('Converted Status Filter:', statusFilter); // Log pour vérifier
         const tasks = yield controller.getTasksByStatusAndProject(statusFilter, projectFilter);
+        console.log('Filtered Tasks:', tasks); // Log pour vérifier
         const taskList = document.getElementById('todo-list');
         if (taskList) {
             taskList.innerHTML = '';
             tasks.forEach(task => {
+                var _a;
                 const li = document.createElement('li');
                 li.className = task.status === Status.Completed ? 'completed' : '';
                 li.innerHTML = `
         <span>${task.description}</span>
-        <span>Start: ${task.startDate}</span>
-        <span>Planned End: ${task.plannedEndDate}</span>
-        ${task.actualEndDate ? `<span>Actual End: ${task.actualEndDate}</span>` : ''}
+        <span>Start: ${((_a = task.startDate) === null || _a === void 0 ? void 0 : _a.toLocaleString()) || 'Not Started Yet'}</span>
+        <span>Planned End: ${task.plannedEndDate.toLocaleString()}</span>
+        ${task.actualEndDate ? `<span>Actual End: ${task.actualEndDate.toLocaleString()}</span>` : ''}
         ${task.actualDuration !== null ? `<span>Duration: ${task.actualDuration}s</span>` : ''}
         <span>Status: ${task.status}</span>
         <div class="actions">
@@ -117,6 +144,18 @@ function loadTasks() {
         }
     });
 }
+/**
+ *
+ *
+ */
+function setupFilters() {
+    const statusFilterSelect = document.getElementById('status-filter');
+    const projectFilterSelect = document.getElementById('project-filter');
+    if (statusFilterSelect && projectFilterSelect) {
+        statusFilterSelect.addEventListener('change', loadTasks);
+        projectFilterSelect.addEventListener('change', loadTasks);
+    }
+}
 window.startTask = (taskId) => __awaiter(void 0, void 0, void 0, function* () {
     yield controller.startTask(taskId);
     yield loadTasks();
@@ -129,11 +168,10 @@ window.editTask = (taskId) => __awaiter(void 0, void 0, void 0, function* () {
     const task = yield controller.getTaskById(taskId);
     if (task) {
         const description = prompt('Edit task description:', task.description);
-        let plannedEndDateInput = prompt('Edit planned end date:', task.plannedEndDate.toISOString().split('T')[0]);
-        let plannedEndTimeInput = prompt('Edit planned end time (HH:MM):', task.plannedEndDate.toTimeString().slice(0, 5));
-        if (description !== null) {
+        const plannedEndDateInput = prompt('Edit planned end date (YYYY-MM-DD):', task.plannedEndDate.toISOString().split('T')[0]);
+        const plannedEndTimeInput = prompt('Edit planned end time (HH:MM):', task.plannedEndDate.toTimeString().slice(0, 5));
+        if (description !== null)
             task.description = description;
-        }
         if (plannedEndDateInput !== null && plannedEndTimeInput !== null) {
             const plannedEndDate = new Date(plannedEndDateInput);
             const [hours, minutes] = plannedEndTimeInput.split(':').map(Number);
@@ -145,11 +183,10 @@ window.editTask = (taskId) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 window.deleteTask = (taskId) => __awaiter(void 0, void 0, void 0, function* () {
-    const confirmation = confirm('Are you sure you want to delete this task?');
-    if (!confirmation)
-        return;
-    yield controller.deleteTask(taskId);
-    yield loadTasks();
+    if (confirm('Are you sure you want to delete this task?')) {
+        yield controller.deleteTask(taskId);
+        yield loadTasks();
+    }
 });
 window.getResources = (taskId) => __awaiter(void 0, void 0, void 0, function* () {
     const task = yield controller.getTaskById(taskId);
@@ -159,17 +196,11 @@ window.getResources = (taskId) => __awaiter(void 0, void 0, void 0, function* ()
     }
 });
 window.deleteProject = (projectId) => __awaiter(void 0, void 0, void 0, function* () {
-    const confirmation = confirm('Are you sure you want to delete this project and all its tasks?');
-    if (!confirmation)
-        return;
-    // Supprimer les tâches associées au projet
-    const tasks = yield controller.getTasksByStatusAndProject(undefined, projectId);
-    for (const task of tasks) {
-        yield controller.deleteTask(task.id);
+    if (confirm('Are you sure you want to delete this project and all its tasks?')) {
+        yield controller.deleteProject(projectId);
+        yield loadProjects();
+        yield loadTasks();
     }
-    // Supprimer le projet
-    yield controller.deleteProject(projectId);
-    yield loadProjects();
 });
 window.generatePlanning = () => __awaiter(void 0, void 0, void 0, function* () {
     const planning = yield controller.generatePlanning();
@@ -183,15 +214,16 @@ window.searchTasksProjects = () => __awaiter(void 0, void 0, void 0, function* (
     const projectList = document.getElementById('project-list');
     if (taskList && projectList) {
         taskList.innerHTML = '';
-        tasks.forEach(task => {
-            if (task.description.toLowerCase().includes(query) || task.projectId.toLowerCase().includes(query)) {
-                const li = document.createElement('li');
-                li.className = task.status === Status.Completed ? 'completed' : '';
-                li.innerHTML = `
+        tasks.filter(task => task.description.toLowerCase().includes(query) || task.projectId.toLowerCase().includes(query))
+            .forEach(task => {
+            var _a;
+            const li = document.createElement('li');
+            li.className = task.status === Status.Completed ? 'completed' : '';
+            li.innerHTML = `
           <span>${task.description}</span>
-          <span>Start: ${task.startDate}</span>
-          <span>Planned End: ${task.plannedEndDate}</span>
-          ${task.actualEndDate ? `<span>Actual End: ${task.actualEndDate}</span>` : ''}
+          <span>Start: ${((_a = task.startDate) === null || _a === void 0 ? void 0 : _a.toLocaleString()) || 'N/A'}</span>
+          <span>Planned End: ${task.plannedEndDate.toLocaleString()}</span>
+          ${task.actualEndDate ? `<span>Actual End: ${task.actualEndDate.toLocaleString()}</span>` : ''}
           ${task.actualDuration !== null ? `<span>Duration: ${task.actualDuration}s</span>` : ''}
           <span>Status: ${task.status}</span>
           <div class="actions">
@@ -202,19 +234,17 @@ window.searchTasksProjects = () => __awaiter(void 0, void 0, void 0, function* (
             <button onclick="getResources(${task.id})">Resources</button>
           </div>
         `;
-                taskList.appendChild(li);
-            }
+            taskList.appendChild(li);
         });
         projectList.innerHTML = '';
-        projects.forEach(project => {
-            if (project.name.toLowerCase().includes(query)) {
-                const li = document.createElement('li');
-                li.innerHTML = `
+        projects.filter(project => project.name.toLowerCase().includes(query))
+            .forEach(project => {
+            const li = document.createElement('li');
+            li.innerHTML = `
           <span>${project.name}</span>
           <button onclick="deleteProject('${project.id}')">Delete</button>
         `;
-                projectList.appendChild(li);
-            }
+            projectList.appendChild(li);
         });
     }
 });
@@ -228,34 +258,31 @@ window.resetSearch = () => __awaiter(void 0, void 0, void 0, function* () {
     yield loadTasks();
     yield loadProjects();
 });
+/**
+ *
+ *
+ * @param {string} planning
+ * @return {*}  {Promise<void>}
+ */
 function downloadPlanningPDF(planning) {
     return __awaiter(this, void 0, void 0, function* () {
         const doc = new jsPDF();
-        // Paramètres de mise en page
-        const pageWidth = doc.internal.pageSize.getWidth(); // Largeur de la page (environ 210 mm ou 595 pt)
-        const pageHeight = doc.internal.pageSize.getHeight(); // Hauteur de la page (environ 297 mm ou 842 pt)
-        const margin = 10; // Marge en points
-        const maxLineWidth = pageWidth - 2 * margin; // Largeur maximale pour le texte
-        let cursorY = margin; // Position Y initiale
-        // Définir la taille de la police
+        const margin = 10;
+        const maxLineWidth = doc.internal.pageSize.getWidth() - 2 * margin;
+        let cursorY = margin;
         doc.setFontSize(12);
-        // Ajouter le titre
         doc.text("Task Planning", margin, cursorY);
-        cursorY += 10; // Décalage après le titre
-        // Découper le texte en lignes adaptées à la largeur de la page
+        cursorY += 10;
         const lines = doc.splitTextToSize(planning, maxLineWidth);
-        // Parcourir les lignes et les ajouter au PDF
-        const lineHeight = 10; // Hauteur estimée par ligne (ajustez selon la taille de police)
+        const lineHeight = 10;
         for (const line of lines) {
-            if (cursorY + lineHeight > pageHeight - margin) {
-                // Si on dépasse la hauteur de la page, ajouter une nouvelle page
+            if (cursorY + lineHeight > doc.internal.pageSize.getHeight() - margin) {
                 doc.addPage();
-                cursorY = margin; // Réinitialiser la position Y
+                cursorY = margin;
             }
             doc.text(line, margin, cursorY);
-            cursorY += lineHeight; // Passer à la ligne suivante
+            cursorY += lineHeight;
         }
-        // Sauvegarder le PDF
         doc.save('task_planning.pdf');
     });
 }

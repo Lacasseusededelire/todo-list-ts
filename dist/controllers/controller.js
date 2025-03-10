@@ -8,128 +8,237 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import Database from '../services/database';
-import { Status } from '../models/models';
 import GeminiAPI from '../services/gemini-api';
+import { Task, Project, Status } from '../models/models';
+/**
+ *
+ *
+ * @export
+ * @class TaskController
+ */
 export default class TaskController {
+    /**
+     * Creates an instance of TaskController.
+     * @memberof TaskController
+     */
     constructor() {
         this.db = new Database();
         this.gemini = new GeminiAPI();
         this.timers = new Map();
     }
+    /**
+     *
+     *
+     * @return {*}  {Promise<void>}
+     * @memberof TaskController
+     */
     initialize() {
         return __awaiter(this, void 0, void 0, function* () {
-            yield this.db.init();
+            yield this.db.initialize();
         });
     }
+    /**
+     *
+     *
+     * @param {string} description
+     * @param {Date} plannedEndDate
+     * @param {string} projectId
+     * @return {*}  {Promise<number>}
+     * @memberof TaskController
+     */
     createTask(description, plannedEndDate, projectId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const task = {
-                id: Date.now(),
-                description,
-                startDate: new Date(),
-                plannedEndDate,
-                actualEndDate: null,
-                actualDuration: null,
-                status: Status.New,
-                projectId
-            };
-            yield this.db.addTask(task);
+            const task = new Task(0, description, null, plannedEndDate, null, null, Status.New, projectId);
+            const taskId = yield this.db.add("tasks", task);
+            if (typeof taskId !== 'number') {
+                throw new Error('Expected a number ID for task, but received a different type');
+            }
+            return taskId;
+        });
+    }
+    /**
+     *
+     *
+     * @param {string} name
+     * @return {*}  {Promise<string>}
+     * @memberof TaskController
+     */
+    addProject(name) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const project = new Project(crypto.randomUUID(), name);
+            const projectData = { id: project.id, name: project.name }; // Objet brut
+            const projectId = yield this.db.add("projects", projectData);
+            if (typeof projectId !== 'string') {
+                throw new Error('Expected a string ID for project, but received a different type');
+            }
+            return projectId;
+        });
+    }
+    /**
+     *
+     *
+     * @return {*}  {Promise<Project[]>}
+     * @memberof TaskController
+     */
+    getAllProjects() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.db.getAll("projects");
+        });
+    }
+    /**
+     *
+     *
+     * @param {Status} [status]
+     * @param {string} [projectId]
+     * @return {*}  {Promise<Task[]>}
+     * @memberof TaskController
+     */
+    getTasksByStatusAndProject(status, projectId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const tasks = yield this.db.getAll("tasks");
+            return tasks.filter(task => (!status || task.status === status) &&
+                (!projectId || task.projectId === projectId));
+        });
+    }
+    /**
+     *
+     *
+     * @param {number} id
+     * @return {*}  {Promise<Task>}
+     * @memberof TaskController
+     */
+    getTaskById(id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const task = yield this.db.getById("tasks", id);
+            if (!task)
+                throw new Error(`Task with ID ${id} not found`);
             return task;
         });
     }
-    startTask(taskId) {
+    /**
+     *
+     *
+     * @param {number} id
+     * @return {*}  {Promise<string>}
+     * @memberof TaskController
+     */
+    startTask(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            const task = yield this.db.getTaskById(taskId);
-            if (!task)
-                throw new Error('Task not found');
-            task.status = Status.InProgress;
-            task.startDate = new Date();
-            this.timers.set(taskId, Date.now());
-            yield this.db.updateTask(task);
-            return this.getResourcesForTask(task.description);
-        });
-    }
-    completeTask(taskId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const task = yield this.db.getTaskById(taskId);
-            if (!task)
-                throw new Error('Task not found');
-            task.status = Status.Completed;
-            task.actualEndDate = new Date();
-            const startTime = this.timers.get(taskId);
-            if (startTime) {
-                task.actualDuration = (Date.now() - startTime) / 1000;
-                this.timers.delete(taskId);
+            const task = yield this.getTaskById(id);
+            if (task.status === Status.New) {
+                task.status = Status.InProgress;
+                task.startDate = new Date();
+                this.timers.set(id, Date.now());
+                yield this.db.update("tasks", task);
+                return this.gemini.getResourcesForTask(task.description);
             }
-            yield this.db.updateTask(task);
+            throw new Error(`Task ${id} cannot be started: current status is ${task.status}`);
         });
     }
-    generatePlanning() {
+    /**
+     *
+     *
+     * @param {number} id
+     * @return {*}  {Promise<void>}
+     * @memberof TaskController
+     */
+    completeTask(id) {
         return __awaiter(this, void 0, void 0, function* () {
-            const tasks = yield this.db.getTasksByStatusAndProject(Status.New);
-            return this.generatePlanningWithGemini(tasks);
-        });
-    }
-    addProject(name) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const project = {
-                id: crypto.randomUUID(),
-                name
-            };
-            yield this.db.addProject(project);
-            return project;
-        });
-    }
-    deleteProject(projectId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            // Supprimer les tâches associées au projet
-            const tasks = yield this.db.getTasksByStatusAndProject(undefined, projectId);
-            for (const task of tasks) {
-                yield this.db.deleteTask(task.id);
+            const task = yield this.getTaskById(id);
+            if (task.status === Status.InProgress) {
+                task.status = Status.Completed;
+                task.actualEndDate = new Date();
+                const startTime = this.timers.get(id);
+                if (startTime) {
+                    task.actualDuration = (Date.now() - startTime) / 1000;
+                    this.timers.delete(id);
+                }
+                else {
+                    task.actualDuration = task.calculateDuration();
+                }
+                yield this.db.update("tasks", task);
             }
-            // Supprimer le projet
-            yield this.db.deleteProject(projectId);
+            else {
+                throw new Error(`Task ${id} cannot be completed: current status is ${task.status}`);
+            }
         });
     }
-    getProjectById(projectId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this.db.getProjectById(projectId);
-        });
-    }
-    getAllProjects() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this.db.getAllProjects();
-        });
-    }
-    getTasksByStatusAndProject(status, projectId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this.db.getTasksByStatusAndProject(status, projectId);
-        });
-    }
-    getTaskById(taskId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this.db.getTaskById(taskId);
-        });
-    }
-    deleteTask(taskId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            yield this.db.deleteTask(taskId);
-        });
-    }
+    /**
+     *
+     *
+     * @param {Task} task
+     * @return {*}  {Promise<void>}
+     * @memberof TaskController
+     */
     updateTask(task) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield this.db.updateTask(task);
+            yield this.db.update("tasks", task);
         });
     }
-    // Méthodes publiques pour accéder à Gemini
+    /**
+     *
+     *
+     * @param {number} id
+     * @return {*}  {Promise<void>}
+     * @memberof TaskController
+     */
+    deleteTask(id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            this.timers.delete(id);
+            yield this.db.delete("tasks", id);
+        });
+    }
+    /**
+     *
+     *
+     * @param {string} id
+     * @return {*}  {Promise<void>}
+     * @memberof TaskController
+     */
+    deleteProject(id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const tasks = yield this.getTasksByStatusAndProject(undefined, id);
+            for (const task of tasks) {
+                this.timers.delete(task.id);
+                yield this.deleteTask(task.id);
+            }
+            yield this.db.delete("projects", id);
+        });
+    }
+    /**
+     *
+     *
+     * @return {*}  {Promise<string>}
+     * @memberof TaskController
+     */
+    generatePlanning() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const tasks = yield this.db.getAll("tasks");
+            return this.gemini.generatePlanning(tasks);
+        });
+    }
+    /**
+     *
+     *
+     * @param {string} description
+     * @return {*}  {Promise<string>}
+     * @memberof TaskController
+     */
     getResourcesForTask(description) {
         return __awaiter(this, void 0, void 0, function* () {
             return this.gemini.getResourcesForTask(description);
         });
     }
-    generatePlanningWithGemini(tasks) {
+    /**
+     *
+     *
+     * @param {string} projectId
+     * @return {*}  {(Promise<Project | undefined>)}
+     * @memberof TaskController
+     */
+    getProjectById(projectId) {
         return __awaiter(this, void 0, void 0, function* () {
-            return this.gemini.generatePlanning(tasks);
+            return this.db.getById("projects", projectId);
         });
     }
 }

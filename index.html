@@ -19,11 +19,12 @@
       </div>
       <div class="filters">
         <label for="status-filter">Filter by Status:</label>
-        <select id="status-filter" onchange="filterTasks()">
-          <option value="">All</option>
-          <option value="new">New</option>
-          <option value="in-progress">In Progress</option>
-          <option value="completed">Completed</option>
+        <select id="status-filter">
+          <option value="">All Statuses</option>
+          <option value="New">New</option>
+          <option value="InProgress">In Progress</option>
+          <option value="Completed">Completed</option>
+          <option value="Cancelled">Cancelled</option>
         </select>
         <label for="project-filter">Filter by Project:</label>
         <select id="project-filter" onchange="filterTasks()">
