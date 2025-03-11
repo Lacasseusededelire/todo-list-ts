@@ -56,7 +56,7 @@ export default class GeminiAPI {
      */
     generatePlanning(tasks) {
         return __awaiter(this, void 0, void 0, function* () {
-            const prompt = `Génère un planning basé sur ces tâches : ${JSON.stringify(tasks.map(task => {
+            const prompt = `Génère un planning basé sur ces tâches en évaluant la priorité des tâches et en les classant par priorité : ${JSON.stringify(tasks.map(task => {
                 var _a, _b;
                 return ({
                     id: task.id,

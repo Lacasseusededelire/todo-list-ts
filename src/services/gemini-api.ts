@@ -63,7 +63,7 @@ export default class GeminiAPI {
    * @memberof GeminiAPI
    */
   async generatePlanning(tasks: Task[]): Promise<string> {
-    const prompt = `Génère un planning basé sur ces tâches : ${JSON.stringify(tasks.map(task => ({
+    const prompt = `Génère un planning basé sur ces tâches en évaluant la priorité des tâches et en les classant par priorité : ${JSON.stringify(tasks.map(task => ({
       id: task.id,
       description: task.description,
       startDate: task.startDate?.toISOString(),
